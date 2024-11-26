@@ -1,9 +1,18 @@
 Trouver les déterminants des médailles olympiques en faisant une analyse économétrique de données de panels.
 On peut faire plusieurs régressions (linéaires, carrées) avec plus ou moins de variables pour essayer d'approximer au mieux
 le nombre de médailles. En gros on teste différentes spécifications pour voir laquelle sera la plus exacte.
-Idée de variables à tester : 
--PIB par tête
--Nombre d'habitants
--Croissance économique
--Inégalités de richesse 
--
+
+
+
+
+Variables explicatives: 
+
+Depenses militaires
+Croissance économique 
+PIB/ tete 
+Popupation 
+IDH  
+Big Data romane
+ 
+genre être madame ou monsieur 
+
