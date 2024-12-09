@@ -23,7 +23,7 @@ medals_by_country = medals %>%
   ) %>% 
   ungroup()
 
-
+#gross 
 gdp_per_hab = read_excel("~/gdp.xlsx", sheet = "Full data") 
 gdp_per_hab = gdp_per_hab %>% 
   select(-countrycode) %>% 
@@ -52,14 +52,11 @@ hdi = hdi %>%
   mutate(year = as.numeric(year)) %>% 
   rename(hdi = value)
 
-str(hdi)
 
 database = database %>% 
   left_join(hdi, by = c("country", "year"))
 
 View(database)
-
-
 
 
 database = database %>% 
