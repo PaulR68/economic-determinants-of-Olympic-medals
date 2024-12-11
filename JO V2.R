@@ -31,7 +31,7 @@ medals_by_country = medals %>%
   ungroup()
 
 medals_by_country <- medals_by_country %>%
-  mutate(country = str_replace(country, "-\\d+$", ""))
+  mutate(country = str_replace(country, "-\\d+$", "")) #there were different words for a same country so we 
 
 medals_by_country <- medals_by_country %>%
   group_by(country, year, city) %>%
@@ -69,15 +69,17 @@ gov_expenditures = gov_expenditures %>%
 database = database %>% 
   left_join(gov_expenditures, by = c("country", "year"))
 
-#host country
+#host country (we had to create manually this database bc no one existed)
+
 host_data <- tibble(
   year = c(1896, 1900, 1904, 1906, 1908, 1912, 1920, 1924, 1928, 1932, 1936, 1948, 1952, 1956, 1960, 1964, 1968, 1972, 1976, 1980, 1984, 1988, 1992, 1996, 2000, 2004, 2008, 2012, 2016, 2020),
   host_country = c("Greece", "France", "United States", "Greece", "Great Britain", "Sweden", "Belgium", "France", "Netherlands", "Unites States", "Germany", "Great Britain", "Finland", "Australia", "Italy", "Japan", "Mexico", "Germany", "Canada", "Russia", "United States", "South Korea", "Spain", "United States", "Australia", "Greece", "China", "Great Britain", "Brazil", "Japan")
 )
 
+
 database = database %>% 
   left_join(host_data, by = "year") %>% 
-  mutate(host = ifelse(country == host_country, 1, 0))
+  mutate(host = ifelse(country == host_country, 1, 0)) #we create a binary variable for the future regression
 
 #democracy
 democracy = democracy %>% 
