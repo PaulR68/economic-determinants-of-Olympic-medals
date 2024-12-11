@@ -92,9 +92,31 @@ database = database %>%
 
 View(database)
 
-#----regression----
+#transformation for some variables
+database = database %>% 
+  mutate(log_gdppc = log(gdppc),
+         log_pop = log(pop),
+         log_growth = log(growth),
+         interaction_log_gdppc_host = log_gdppc*host,
+         interaction_log_pop_host = log_pop*host)
+
+#----second step : analysis ----
+#gdppc may be endogeneous ()
+
+
+
+
+#----third step : regressions----
 reg = lm(total_medals ~ gdppc + pop + host, data = database)
 summary(reg)
 
-
+reg = lm(total_medals ~ log_gdppc + log_pop + host + interaction_log_gdppc_host + interaction_log_pop_host, data = database)
+summary(reg)
   
+
+reg = lm(total_medals ~ log_gdppc + log_pop + host + interaction_log_pop_host, data = database)
+summary(reg)
+#heteroscedasticty test
+library(lmtest)
+bptest(reg)
+
