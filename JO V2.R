@@ -4,6 +4,9 @@ library(dplyr)
 library(readxl)
 library(tidyr)
 library(stringr)
+library(car)
+library(sandwich)
+library(lmtest)
 
 #----first step : manage data bases ----
 #we import our different data bases 
@@ -116,7 +119,28 @@ summary(reg)
 
 reg = lm(total_medals ~ log_gdppc + log_pop + host + interaction_log_pop_host, data = database)
 summary(reg)
+
 #heteroscedasticty test
-library(lmtest)
 bptest(reg)
+
+#standard robust errors
+robust_se = vcovHC(reg, type = "HC1")  
+
+coeftest(reg, vcov = robust_se)
+
+
+vif(reg) #big multicolinearity so we'll centered our variables to solve this problem
+
+database = database %>%
+  mutate(log_gdppc_centered = log_gdppc - mean(log_gdppc, na.rm = TRUE),
+    host_centered = host - mean(host, na.rm = TRUE),
+    interaction_centered = log_gdppc_centered * host_centered
+  )
+
+
+reg_centered = lm(total_medals ~ log_gdppc_centered + log_pop + host_centered + interaction_centered, data = database)
+summary(reg_centered)
+
+
+vif(reg_centered) #no more multicolinearity issue
 
