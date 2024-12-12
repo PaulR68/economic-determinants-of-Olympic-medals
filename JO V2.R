@@ -34,7 +34,7 @@ medals_by_country = medals %>%
   ungroup()
 
 medals_by_country <- medals_by_country %>%
-  mutate(country = str_replace(country, "-\\d+$", "")) #there were different words for a same country so we 
+  mutate(country = str_replace(country, "-\\d+$", "")) #there were different words for a same country so we merge these lines
 
 medals_by_country <- medals_by_country %>%
   group_by(country, year, city) %>%
@@ -73,10 +73,9 @@ database = database %>%
   left_join(gov_expenditures, by = c("country", "year"))
 
 #host country (we had to create manually this database bc no one existed)
-
 host_data <- tibble(
-  year = c(1896, 1900, 1904, 1906, 1908, 1912, 1920, 1924, 1928, 1932, 1936, 1948, 1952, 1956, 1960, 1964, 1968, 1972, 1976, 1980, 1984, 1988, 1992, 1996, 2000, 2004, 2008, 2012, 2016, 2020),
-  host_country = c("Greece", "France", "United States", "Greece", "Great Britain", "Sweden", "Belgium", "France", "Netherlands", "Unites States", "Germany", "Great Britain", "Finland", "Australia", "Italy", "Japan", "Mexico", "Germany", "Canada", "Russia", "United States", "South Korea", "Spain", "United States", "Australia", "Greece", "China", "Great Britain", "Brazil", "Japan")
+  year = c(1896, 1900, 1904, 1906, 1908, 1912, 1920, 1924, 1928, 1932, 1936, 1948, 1952, 1956, 1960, 1964, 1968, 1972, 1976, 1980, 1984, 1988, 1992, 1996, 2000, 2004, 2008, 2012, 2016, 2020, 2024),
+  host_country = c("Greece", "France", "United States", "Greece", "Great Britain", "Sweden", "Belgium", "France", "Netherlands", "Unites States", "Germany", "Great Britain", "Finland", "Australia", "Italy", "Japan", "Mexico", "Germany", "Canada", "Russia", "United States", "South Korea", "Spain", "United States", "Australia", "Greece", "China", "Great Britain", "Brazil", "Japan", "France")
 )
 
 
@@ -99,9 +98,11 @@ View(database)
 database = database %>% 
   mutate(log_gdppc = log(gdppc),
          log_pop = log(pop),
-         log_growth = log(growth),
+         log_growth = ifelse(growth > 0, log(growth), -log(abs(growth))),
          interaction_log_gdppc_host = log_gdppc*host,
          interaction_log_pop_host = log_pop*host)
+
+
 
 #----second step : analysis ----
 #gdppc may be endogeneous ()
@@ -110,37 +111,35 @@ database = database %>%
 
 
 #----third step : regressions----
-reg = lm(total_medals ~ gdppc + pop + host, data = database)
-summary(reg)
-
 reg = lm(total_medals ~ log_gdppc + log_pop + host + interaction_log_gdppc_host + interaction_log_pop_host, data = database)
 summary(reg)
   
-
-reg = lm(total_medals ~ log_gdppc + log_pop + host + interaction_log_pop_host, data = database)
-summary(reg)
-
 #heteroscedasticty test
 bptest(reg)
 
-#standard robust errors
+#standard robust errors to solve heteroscedasticity
 robust_se = vcovHC(reg, type = "HC1")  
-
 coeftest(reg, vcov = robust_se)
 
-
+#multicolinearity test
 vif(reg) #big multicolinearity so we center our variables to solve this problem
 
 database = database %>%
   mutate(log_gdppc_centered = log_gdppc - mean(log_gdppc, na.rm = TRUE),
-    host_centered = host - mean(host, na.rm = TRUE),
-    interaction_centered = log_gdppc_centered * host_centered
-  )
+         log_pop_centered = log_pop - mean(log_pop, na.rm = TRUE),
+         host_centered = host - mean(host, na.rm = TRUE),
+         interaction_gdppc_host_centered = log_gdppc_centered * host_centered,
+         interaction_pop_host_centered = log_pop_centered * host_centered)
 
 
-reg_centered = lm(total_medals ~ log_gdppc_centered + log_pop + host_centered + interaction_centered, data = database)
+
+reg_centered = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered, data = database)
 summary(reg_centered)
 
 
 vif(reg_centered) #no more multicolinearity issue
 
+#regression with others variables (variables that are available for only a few observations) 
+
+reg = lm(total_medals ~ log_gdppc_centered + log_pop + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered + expenditures + hdi, data = database)
+summary(reg)
