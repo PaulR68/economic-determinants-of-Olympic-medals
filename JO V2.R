@@ -129,7 +129,7 @@ robust_se = vcovHC(reg, type = "HC1")
 coeftest(reg, vcov = robust_se)
 
 
-vif(reg) #big multicolinearity so we'll centered our variables to solve this problem
+vif(reg) #big multicolinearity so we center our variables to solve this problem
 
 database = database %>%
   mutate(log_gdppc_centered = log_gdppc - mean(log_gdppc, na.rm = TRUE),
