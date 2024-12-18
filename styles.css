@@ -1,0 +1,72 @@
+/* Style général pour le corps */
+  body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 20px;
+  }
+
+/* Titres principaux */
+  h1 {
+    color: #0056b3;
+      text-align: center;
+    font-size: 2.5em;
+  }
+
+/* Sous-titres */
+  h2 {
+    color: #007bff;
+      font-size: 2em;
+    margin-top: 20px;
+  }
+
+/* Paragraphes */
+  p {
+    color: #333333;
+      font-size: 1.1em;
+  }
+
+/* Bloc de code */
+  pre {
+    background-color: #f8f9fa;
+      border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 0.95em;
+    overflow-x: auto;
+  }
+
+/* Tableau */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+.table th, .table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.table th {
+  background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+/* Citations */
+  blockquote {
+    background: #f9f9f9;
+      border-left: 4px solid #ccc;
+    margin: 20px 0;
+    padding: 10px 20px;
+    font-style: italic;
+  }
+
+/* Liens */
+  a {
+    color: #007bff;
+      text-decoration: none;
+  }
+
+a:hover {
+  text-decoration: underline;
+}

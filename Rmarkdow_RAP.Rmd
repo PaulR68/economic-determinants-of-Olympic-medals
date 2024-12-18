@@ -1,0 +1,254 @@
+---
+title: "Projet économétrie: Les facteurs déterminants des médailles aux Jeux Olympiques"
+author: 'Romane Froger, Paul Ritzinger, Andres Goitia'
+date: "2024-12-19"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    css: styles.css
+---
+
+
+# Introduction 
+
+Il existe fête un événement où on peut voir les meilleurs athlètes de chaque pays pour participer dans plusieurs disciplines où ils rivalisent pour déterminer à la fin le meilleur de cette discipline. Cet événement, connu comme les Jeux Olympiques, a été célebré pour première fois en Athènes 1896. Tous les quatres ans nous attendions avec impacience voir combien d'athlètes représenteront notre pays et remporteront des medailles. Cependant, est-ce que vous avez déjà réfléchi à ce qui permet aux athlètes de gagner une médaille? Pour cela ce travail s'intéresse à analyser les facteurs déterminants des médailles des Jeux Olympiques.
+
+# Bibliothèques nécessaires
+
+
+```
+library(dplyr)
+library(readxl)
+library(tidyr)
+library(stringr)
+library(car)
+library(sandwich)
+library(lmtest)
+library(nlme)
+library(plm)
+library(stargazer)
+```
+
+# Chargement des données
+
+```
+medals = read.csv("~/FAC/olympics_dataset.csv")
+gdp_per_capita = read_excel("~/gdp.xlsx", sheet = "Full data") 
+democracy = read.csv("~/democracy.csv")
+hdi = read_excel("~/hdr-data.xlsx")
+gov_expenditures = read_excel("~/gov_expenditures.xlsx")
+
+```
+
+# Nettoyage et préparation des données 
+
+
+Médailles:
+```
+medals = medals %>% 
+  select(-player_id, -Event, -NOC) %>% 
+  filter(Medal != "No medal") %>% 
+  rename(country = Team) %>% 
+  rename(year = Year) %>% 
+  rename(city = City)
+
+medals_by_country = medals %>% 
+  group_by(country, year, city) %>% 
+  summarise(
+    total_bronze = sum(Medal == "bronze"),
+    total_silver = sum(Medal == "Silver"),
+    total_gold = sum(Medal == "Gold"),
+    total_medals = n()) %>% 
+  ungroup()
+
+medals_by_country <- medals_by_country %>%
+  mutate(country = str_replace(country, "-\\d+$", ""))
+  
+#il y avait différents mots pour un même pays donc nous fusionnons ces lignes 
+
+medals_by_country <- medals_by_country %>%
+  group_by(country, year, city) %>%
+  summarise(across(where(is.numeric), \(x) sum(x, na.rm = TRUE)),  
+            .groups = "drop")
+            
+```            
+
+PIB per capita:
+
+```
+gdp_per_capita = gdp_per_capita %>% 
+  select(-countrycode) %>% 
+  mutate(growth = as.numeric(growth))
+  
+database = medals_by_country %>% 
+  left_join(gdp_per_capita, by = c("country", "year"))
+```
+
+Indice de développement humain: 
+
+```
+hdi = hdi %>% 
+  select(-countryIsoCode, -indexCode, -index, -dimension, - indicatorCode, -indicator, -note) %>% 
+  mutate(year = as.numeric(year)) %>% 
+  rename(hdi = value)
+
+database = database %>% 
+  left_join(hdi, by = c("country", "year"))
+```
+Dépenses totales des administrations publiques consacrées aux services récréatifs et sportifs en % du PIB:
+
+```
+gov_expenditures = gov_expenditures %>%
+  mutate(across(where(is.numeric), as.character))  %>% 
+  rename(country = ...1) %>% 
+  pivot_longer (
+    col = -country,
+    names_to = "year",
+    values_to = "expenditures") %>% 
+  mutate(year = as.numeric(year)) %>% 
+  mutate(expenditures = as.numeric(expenditures))
+
+database = database %>% 
+  left_join(gov_expenditures, by = c("country", "year"))
+
+```
+pays hôte (créer manuellement): 
+
+
+```
+host_data <- tibble(
+  year = c(1896, 1900, 1904, 1906, 1908, 1912, 
+           1920, 1924, 1928, 1932, 1936, 1948, 
+           1952, 1956, 1960, 1964, 1968, 1972, 
+           1976, 1980, 1984, 1988, 1992, 1996, 
+           2000, 2004, 2008,  2012, 2016, 2020, 2024),
+  host_country = c("Greece", "France", "United States", "Greece", "Great Britain", "Sweden", 
+                   "Belgium", "France", "Netherlands", "Unites States", "Germany", "Great Britain",
+                   "Finland", "Australia", "Italy", "Japan", "Mexico", "Germany", 
+                   "Canada", "Russia", "United States", "South Korea", "Spain", "United States", 
+                   "Australia", "Greece", "China", "Great Britain", "Brazil", "Japan", "France"))
+
+
+database = database %>% 
+  left_join(host_data, by = "year") %>% 
+  mutate(host = ifelse(country == host_country, 1, 0))
+  
+  #Variable binaire pour regression future 
+
+
+```
+Démocratie: 
+
+```
+democracy = democracy %>% 
+  select(country = ID_country_name, 
+         year = ID_year, 
+         representative_gov = C_A1,
+         fundamental_rights = C_A2,
+         checks_on_gov = C_A3,
+         impartial_adm = C_A4) 
+
+database = database %>% 
+  left_join(democracy, by = c("country", "year"))
+
+View(database)
+```
+Transformation de certains variables:
+
+```
+database = database %>% 
+  mutate(log_gdppc = log(gdppc),
+         log_pop = log(pop),
+         log_growth = ifelse(growth > 0, log(growth), -log(abs(growth))),
+         interaction_log_gdppc_host = log_gdppc*host,
+         interaction_log_pop_host = log_pop*host)
+
+```
+
+# Regression 
+
+```{r}
+
+load(".RData")
+reg = lm(total_medals ~ log_gdppc + log_pop + host + interaction_log_gdppc_host + interaction_log_pop_host, data = database)
+
+summary (reg)
+
+plot(reg$fitted.values, resid(reg), 
+     xlab = "Valeurs ajustées", 
+     ylab = "Résidus",
+     main = "Graphique des résidus vs valeurs ajustées",
+     pch = 19, col = "blue")
+
+# ligne horizontale à zéro
+abline(h = 0, col = "red", lwd = 2)
+
+```
+
+
+
+
+Test d'hétéroscédasticité
+
+```
+library(lmtest)
+bptest(reg)
+#standard robust errors to solve heteroscedasticity
+
+robust_se = vcovHC(reg, type = "HC1")  
+coeftest(reg, vcov = robust_se)
+
+```
+Test de multicolinéarité
+
+
+```
+
+vif(reg) #big multicolinearity so we center our variables to solve this problem
+database = database %>%
+  mutate(log_gdppc_centered = log_gdppc - mean(log_gdppc, na.rm = TRUE),
+         log_pop_centered = log_pop - mean(log_pop, na.rm = TRUE),
+         host_centered = host - mean(host, na.rm = TRUE),
+         interaction_gdppc_host_centered = log_gdppc_centered * host_centered,
+         interaction_pop_host_centered = log_pop_centered * host_centered)
+```
+
+```{r}
+library(car)
+load(".RData")
+reg_centered = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered, data = database)
+summary(reg_centered)
+
+vif(reg_centered) #no more multicolinearity issue
+
+```
+
+Régression avec d'autres variables (variables disponibles pour quelques observations seulement)
+
+```{r}
+load(".RData")
+reg = lm(total_medals ~ log_gdppc_centered + log_pop + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered + expenditures + hdi, data = database)
+
+summary(reg)
+
+# graphique des résidus par rapport aux valeurs ajustées
+plot(reg$fitted.values, resid(reg), 
+     xlab = "Valeurs ajustées", 
+     ylab = "Résidus",
+     main = "Résidus vs Valeurs Ajustées",
+     pch = 19, col = "blue")
+
+# ligne horizontale pour la référence à zéro
+abline(h = 0, col = "red", lwd = 2)
+
+
+```
+
+vif(reg) jsp comment le mettrre helpppppppppppppppppp
+
+
+Histogramme des résidus
+```{R}
+hist(residuals(reg), breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
+```
