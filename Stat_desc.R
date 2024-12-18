@@ -69,4 +69,4 @@ ggplot(data = data_plot, aes(x = year)) +
     axis.title.y.right = element_text(color = "red"),
     legend.position = "top"
   )
-
+  
