@@ -45,7 +45,7 @@ gov_expenditures = read_excel("~/gov_expenditures.xlsx")
 # Nettoyage et préparation des données 
 
 
-Médailles:
+## Médailles:
 ```
 medals = medals %>% 
   select(-player_id, -Event, -NOC) %>% 
@@ -75,7 +75,7 @@ medals_by_country <- medals_by_country %>%
             
 ```            
 
-PIB per capita:
+## PIB per capita:
 
 ```
 gdp_per_capita = gdp_per_capita %>% 
@@ -86,7 +86,7 @@ database = medals_by_country %>%
   left_join(gdp_per_capita, by = c("country", "year"))
 ```
 
-Indice de développement humain: 
+## Indice de développement humain: 
 
 ```
 hdi = hdi %>% 
@@ -97,7 +97,7 @@ hdi = hdi %>%
 database = database %>% 
   left_join(hdi, by = c("country", "year"))
 ```
-Dépenses totales des administrations publiques consacrées aux services récréatifs et sportifs en % du PIB:
+## Dépenses totales des administrations publiques consacrées aux services récréatifs et sportifs en % du PIB:
 
 ```
 gov_expenditures = gov_expenditures %>%
@@ -114,7 +114,7 @@ database = database %>%
   left_join(gov_expenditures, by = c("country", "year"))
 
 ```
-pays hôte (créer manuellement): 
+## Pays hôte (créée manuellement): 
 
 
 ```
@@ -139,7 +139,7 @@ database = database %>%
 
 
 ```
-Démocratie: 
+## Démocratie: 
 
 ```
 democracy = democracy %>% 
@@ -155,7 +155,7 @@ database = database %>%
 
 View(database)
 ```
-Transformation de certains variables:
+## Transformation de certains variables:
 
 ```
 database = database %>% 
@@ -306,11 +306,9 @@ abline(h = 0, col = "red", lwd = 2)
 ```
 
 
+## Test d'hétéroscédasticité
 
-
-Test d'hétéroscédasticité
-
-```{r}
+```
 library(lmtest)
 library(sandwich)
 bptest(reg)
@@ -320,8 +318,19 @@ robust_se = vcovHC(reg, type = "HC1")
 coeftest(reg, vcov = robust_se)
 
 ```
-Test de multicolinéarité
 
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+library(lmtest)
+library(sandwich)
+bptest(reg)
+#standard robust errors to solve heteroscedasticity
+
+robust_se = vcovHC(reg, type = "HC1")  
+coeftest(reg, vcov = robust_se)
+
+```
+
+## Test de multicolinéarité
 
 ```
 vif(reg) #big multicolinearity so we center our variables to solve this problem
@@ -330,10 +339,28 @@ database = database %>%
          log_pop_centered = log_pop - mean(log_pop, na.rm = TRUE),
          host_centered = host - mean(host, na.rm = TRUE),
          interaction_gdppc_host_centered = log_gdppc_centered * host_centered,
-         interaction_pop_host_centered = log_pop_centered * host_centered)
+         interaction_pop_host_centered = log_pop_centered * host_centered) 
+         
+```
+``` {r echo = FALSE, message = FALSE, warning = FALSE}
+library(car)
+vif(reg)
 ```
 
-```{r}
+```
+library(car)
+load(".RData")
+reg_centered = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered, data = database)
+summary(reg_centered)
+
+vif(reg_centered) #no more multicolinearity issue
+```
+``` {r echo = FALSE, message = FALSE, warning = FALSE}
+library(car)
+vif(reg_centered)
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 library(car)
 load(".RData")
 reg_centered = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered, data = database)
@@ -343,6 +370,8 @@ vif(reg_centered) #no more multicolinearity issue
 
 ```
 
+
+```
 Régression avec d'autres variables (variables disponibles pour quelques observations seulement)
 
 #regression with others variables (variables that are available for only a few observations) 
