@@ -17,7 +17,6 @@ Nous cherchons à analyser les facteurs qui déterminent l'obtention de médaill
 
 # Bibliothèques nécessaires
 
-
 ```
 library(dplyr)
 library(readxl)
@@ -116,7 +115,6 @@ database = database %>%
 ```
 ## Pays hôte (créée manuellement): 
 
-
 ```
 host_data <- tibble(
   year = c(1896, 1900, 1904, 1906, 1908, 1912, 
@@ -166,6 +164,7 @@ database = database %>%
          interaction_log_pop_host = log_pop*host)
 
 ```
+Nous avons mis en log certaines variables afin d'avoir une interprétation plus efficace, et nous avons rajouter des termes d'interaction pour que notre modèle ne soit pas biaisé
 
 # Statistiques Descriptives
 
@@ -185,10 +184,8 @@ mat_correlation <- cor(database1_imputed, use = "complete.obs")
 library(ggplot2)
 library(reshape2)
 
-# Transformer la matrice en un format long pour ggplot2
 mat_melt <- melt(mat_correlation)
 
-# Créer le heatmap
 ggplot(data = mat_melt, aes(x = Var1, y = Var2, fill = value)) + 
   geom_tile(color = "white") + 
   scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
@@ -226,10 +223,8 @@ mat_correlation <- cor(database1_imputed, use = "complete.obs")
 library(ggplot2)
 library(reshape2)
 
-# Transformer la matrice en un format long pour ggplot2
 mat_melt <- melt(mat_correlation)
 
-# Créer le heatmap
 ggplot(data = mat_melt, aes(x = Var1, y = Var2, fill = value)) + 
   geom_tile(color = "white") + 
   scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
@@ -290,11 +285,11 @@ ggplot(data = data_plot, aes(x = year)) +
 ```{r}
 
 load(".RData")
-reg = lm(total_medals ~ log_gdppc + log_pop + host + interaction_log_gdppc_host + interaction_log_pop_host, data = database)
+reg1 = lm(total_medals ~ log_gdppc + log_pop + host + interaction_log_gdppc_host + interaction_log_pop_host, data = database)
 
-summary (reg)
+summary (reg1)
 
-plot(reg$fitted.values, resid(reg), 
+plot(reg1$fitted.values, resid(reg1), 
      xlab = "Valeurs ajustées", 
      ylab = "Résidus",
      main = "Graphique des résidus vs valeurs ajustées",
@@ -311,29 +306,50 @@ abline(h = 0, col = "red", lwd = 2)
 ```
 library(lmtest)
 library(sandwich)
-bptest(reg)
-#standard robust errors to solve heteroscedasticity
+bptest(reg1)
 
-robust_se = vcovHC(reg, type = "HC1")  
-coeftest(reg, vcov = robust_se)
+robust_se = vcovHC(reg1, type = "HC1")  
+coeftest(reg1, vcov = robust_se)
 
 ```
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 library(lmtest)
 library(sandwich)
-bptest(reg)
-#standard robust errors to solve heteroscedasticity
+bptest(reg1)
 
-robust_se = vcovHC(reg, type = "HC1")  
-coeftest(reg, vcov = robust_se)
+robust_se = vcovHC(reg1, type = "HC1")  
+coeftest(reg1, vcov = robust_se)
 
 ```
+
+nous avions un problème d'hétéroscédasticité, que nous avons résolu en utilisant des erreures robustes standards
 
 ## Test de multicolinéarité
 
 ```
-vif(reg) #big multicolinearity so we center our variables to solve this problem
+vif(reg1) 
+
+```
+``` {r echo = FALSE, message = FALSE, warning = FALSE}
+library(car)
+vif(reg1)
+```
+
+Nous avons un problème de multicolinéarité entre les variables, que nous résolvons en les centrant
+
+```
+vif(reg_centered) 
+```
+
+``` {r echo = FALSE, message = FALSE, warning = FALSE}
+library(car)
+vif(reg_centered)
+```
+
+```
+library(car)
+load(".RData")
 database = database %>%
   mutate(log_gdppc_centered = log_gdppc - mean(log_gdppc, na.rm = TRUE),
          log_pop_centered = log_pop - mean(log_pop, na.rm = TRUE),
@@ -341,49 +357,27 @@ database = database %>%
          interaction_gdppc_host_centered = log_gdppc_centered * host_centered,
          interaction_pop_host_centered = log_pop_centered * host_centered) 
          
-```
-``` {r echo = FALSE, message = FALSE, warning = FALSE}
-library(car)
-vif(reg)
-```
-
-```
-library(car)
-load(".RData")
 reg_centered = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered, data = database)
 summary(reg_centered)
 
-vif(reg_centered) #no more multicolinearity issue
 ```
 ``` {r echo = FALSE, message = FALSE, warning = FALSE}
 library(car)
-vif(reg_centered)
-```
-
-```{r echo = FALSE, message = FALSE, warning = FALSE}
-library(car)
-load(".RData")
 reg_centered = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered, data = database)
 summary(reg_centered)
 
-vif(reg_centered) #no more multicolinearity issue
-
 ```
 
 
-```
-Régression avec d'autres variables (variables disponibles pour quelques observations seulement)
-
-#regression with others variables (variables that are available for only a few observations) 
+## Régression avec d'autres variables
 
 ```{r}
 load(".RData")
-reg = lm(total_medals ~ log_gdppc_centered + log_pop + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered + expenditures + hdi, data = database)
-summary(reg)
-
+reg2 = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered + checks_on_gov + impartial_adm, data = database)
+summary(reg2)
 
 # graphique des résidus par rapport aux valeurs ajustées
-plot(reg$fitted.values, resid(reg), 
+plot(reg2$fitted.values, resid(reg2), 
      xlab = "Valeurs ajustées", 
      ylab = "Résidus",
      main = "Résidus vs Valeurs Ajustées",
@@ -392,23 +386,9 @@ plot(reg$fitted.values, resid(reg),
 # ligne horizontale pour la référence à zéro
 abline(h = 0, col = "red", lwd = 2)
 
-
+vif(reg2) 
 ```
 
-```{r}
-load(".RData")
-reg = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered + checks_on_gov + impartial_adm, data = database)
-summary(reg)
-# graphique des résidus par rapport aux valeurs ajustées
-plot(reg$fitted.values, resid(reg), 
-     xlab = "Valeurs ajustées", 
-     ylab = "Résidus",
-     main = "Résidus vs Valeurs Ajustées",
-     pch = 19, col = "blue")
+# Conclusion
 
-# ligne horizontale pour la référence à zéro
-abline(h = 0, col = "red", lwd = 2)
-
-vif(reg) 
-```
-
+Ainsi, notre dernière régression nous montre que toutes les variables explicatives sont significatives et non corrélées entre elles, mais ce résultat est à nuancer, puisque beaucoup d'observations ont été omises

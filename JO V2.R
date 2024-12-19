@@ -42,6 +42,8 @@ medals_by_country <- medals_by_country %>%
   summarise(across(where(is.numeric), \(x) sum(x, na.rm = TRUE)),  
             .groups = "drop")
 
+
+View(medals_by_country)
 #gross domestic product per capita
 gdp_per_capita = gdp_per_capita %>% 
   select(-countrycode) %>% 
