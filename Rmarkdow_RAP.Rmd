@@ -12,7 +12,8 @@ output:
 
 # Introduction 
 
-Il existe fête un événement où on peut voir les meilleurs athlètes de chaque pays pour participer dans plusieurs disciplines où ils rivalisent pour déterminer à la fin le meilleur de cette discipline. Cet événement, connu comme les Jeux Olympiques, a été célebré pour première fois en Athènes 1896. Tous les quatres ans nous attendions avec impacience voir combien d'athlètes représenteront notre pays et remporteront des medailles. Cependant, est-ce que vous avez déjà réfléchi à ce qui permet aux athlètes de gagner une médaille? Pour cela ce travail s'intéresse à analyser les facteurs déterminants des médailles des Jeux Olympiques.
+Les Jeux Olympiques se déroulent tous les quatres ans dans une ville différente, pour que les athlètes du monde entier s'affrontent autour d'une thématique universelle : le  sport. 
+Nous cherchons à analyser les facteurs qui déterminent l'obtention de médailles aux JO, puisque tous les pays sont différents, tant du point de vue économique que culturel, est-ce que des variables clés jouent un rôle prépondérant dans l'obtention des médailles ? C'est ce que nous allons chercher à déterminer dans ce travail.
 
 # Bibliothèques nécessaires
 
@@ -113,7 +114,7 @@ database = database %>%
   left_join(gov_expenditures, by = c("country", "year"))
 
 ```
-pays hôte (créer manuellement): 
+pays hôte (créée manuellement): 
 
 
 ```
@@ -165,105 +166,6 @@ database = database %>%
          interaction_log_pop_host = log_pop*host)
 
 ```
-
-# Regression 
-
-```{r}
-
-load(".RData")
-reg = lm(total_medals ~ log_gdppc + log_pop + host + interaction_log_gdppc_host + interaction_log_pop_host, data = database)
-
-summary (reg)
-
-plot(reg$fitted.values, resid(reg), 
-     xlab = "Valeurs ajustées", 
-     ylab = "Résidus",
-     main = "Graphique des résidus vs valeurs ajustées",
-     pch = 19, col = "blue")
-
-# ligne horizontale à zéro
-abline(h = 0, col = "red", lwd = 2)
-
-```
-
-
-
-
-Test d'hétéroscédasticité
-
-```{r}
-library(lmtest)
-library(sandwich)
-bptest(reg)
-#standard robust errors to solve heteroscedasticity
-
-robust_se = vcovHC(reg, type = "HC1")  
-coeftest(reg, vcov = robust_se)
-
-```
-Test de multicolinéarité
-
-
-```
-vif(reg) #big multicolinearity so we center our variables to solve this problem
-database = database %>%
-  mutate(log_gdppc_centered = log_gdppc - mean(log_gdppc, na.rm = TRUE),
-         log_pop_centered = log_pop - mean(log_pop, na.rm = TRUE),
-         host_centered = host - mean(host, na.rm = TRUE),
-         interaction_gdppc_host_centered = log_gdppc_centered * host_centered,
-         interaction_pop_host_centered = log_pop_centered * host_centered)
-```
-
-```{r}
-library(car)
-load(".RData")
-reg_centered = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered, data = database)
-summary(reg_centered)
-
-vif(reg_centered) #no more multicolinearity issue
-
-```
-
-Régression avec d'autres variables (variables disponibles pour quelques observations seulement)
-
-#regression with others variables (variables that are available for only a few observations) 
-
-```{r}
-load(".RData")
-reg = lm(total_medals ~ log_gdppc_centered + log_pop + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered + expenditures + hdi, data = database)
-summary(reg)
-
-
-# graphique des résidus par rapport aux valeurs ajustées
-plot(reg$fitted.values, resid(reg), 
-     xlab = "Valeurs ajustées", 
-     ylab = "Résidus",
-     main = "Résidus vs Valeurs Ajustées",
-     pch = 19, col = "blue")
-
-# ligne horizontale pour la référence à zéro
-abline(h = 0, col = "red", lwd = 2)
-
-
-```
-
-```{r}
-load(".RData")
-reg = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered + checks_on_gov + impartial_adm, data = database)
-summary(reg)
-# graphique des résidus par rapport aux valeurs ajustées
-plot(reg$fitted.values, resid(reg), 
-     xlab = "Valeurs ajustées", 
-     ylab = "Résidus",
-     main = "Résidus vs Valeurs Ajustées",
-     pch = 19, col = "blue")
-
-# ligne horizontale pour la référence à zéro
-abline(h = 0, col = "red", lwd = 2)
-
-vif(reg) 
-```
-
 # Statistiques Descriptives
 
 ```
@@ -379,3 +281,103 @@ ggplot(data = data_plot, aes(x = year)) +
     legend.position = "top"
   )
 ```
+
+
+# Regression 
+
+```{r}
+
+load(".RData")
+reg = lm(total_medals ~ log_gdppc + log_pop + host + interaction_log_gdppc_host + interaction_log_pop_host, data = database)
+
+summary (reg)
+
+plot(reg$fitted.values, resid(reg), 
+     xlab = "Valeurs ajustées", 
+     ylab = "Résidus",
+     main = "Graphique des résidus vs valeurs ajustées",
+     pch = 19, col = "blue")
+
+# ligne horizontale à zéro
+abline(h = 0, col = "red", lwd = 2)
+
+```
+
+
+
+
+Test d'hétéroscédasticité
+
+```{r}
+library(lmtest)
+library(sandwich)
+bptest(reg)
+#standard robust errors to solve heteroscedasticity
+
+robust_se = vcovHC(reg, type = "HC1")  
+coeftest(reg, vcov = robust_se)
+
+```
+Test de multicolinéarité
+
+
+```
+vif(reg) #big multicolinearity so we center our variables to solve this problem
+database = database %>%
+  mutate(log_gdppc_centered = log_gdppc - mean(log_gdppc, na.rm = TRUE),
+         log_pop_centered = log_pop - mean(log_pop, na.rm = TRUE),
+         host_centered = host - mean(host, na.rm = TRUE),
+         interaction_gdppc_host_centered = log_gdppc_centered * host_centered,
+         interaction_pop_host_centered = log_pop_centered * host_centered)
+```
+
+```{r}
+library(car)
+load(".RData")
+reg_centered = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered, data = database)
+summary(reg_centered)
+
+vif(reg_centered) #no more multicolinearity issue
+
+```
+
+Régression avec d'autres variables (variables disponibles pour quelques observations seulement)
+
+#regression with others variables (variables that are available for only a few observations) 
+
+```{r}
+load(".RData")
+reg = lm(total_medals ~ log_gdppc_centered + log_pop + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered + expenditures + hdi, data = database)
+summary(reg)
+
+
+# graphique des résidus par rapport aux valeurs ajustées
+plot(reg$fitted.values, resid(reg), 
+     xlab = "Valeurs ajustées", 
+     ylab = "Résidus",
+     main = "Résidus vs Valeurs Ajustées",
+     pch = 19, col = "blue")
+
+# ligne horizontale pour la référence à zéro
+abline(h = 0, col = "red", lwd = 2)
+
+
+```
+
+```{r}
+load(".RData")
+reg = lm(total_medals ~ log_gdppc_centered + log_pop_centered + host_centered + interaction_gdppc_host_centered + interaction_pop_host_centered + checks_on_gov + impartial_adm, data = database)
+summary(reg)
+# graphique des résidus par rapport aux valeurs ajustées
+plot(reg$fitted.values, resid(reg), 
+     xlab = "Valeurs ajustées", 
+     ylab = "Résidus",
+     main = "Résidus vs Valeurs Ajustées",
+     pch = 19, col = "blue")
+
+# ligne horizontale pour la référence à zéro
+abline(h = 0, col = "red", lwd = 2)
+
+vif(reg) 
+```
+
